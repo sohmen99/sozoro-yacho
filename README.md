@@ -7,7 +7,8 @@
 ▶ **https://sohmen99.github.io/sozoro-yacho/**
 
 アプリ本体（[tokyo-sozoro](https://github.com/sohmen99/tokyo-sozoro)）とは分けてあります。
-これは運用側の資料です。
+これは**現地で集める側**の資料です。集めたものを入れる器と、何件要るかは
+[sozoro-db](https://github.com/sohmen99/sozoro-db) にあります。
 
 ---
 
