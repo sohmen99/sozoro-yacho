@@ -1,6 +1,8 @@
 import json, html, os
 data = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'targets.json')))
-order = sorted(data.items(), key=lambda kv: -len(kv[1]['places']))
+WARD_ORDER = {'台東区': 0, '荒川区': 1}
+order = sorted(data.items(), key=lambda kv: (WARD_ORDER.get(kv[1]['ward'], 9), -len(kv[1]['places'])))
+SLUG = {k: 'w%d' % i for i, (k, _) in enumerate(order)}
 LAYER = {'体験する':('exp','体'), '街を見る':('see','街'), '静かに歩く':('walk','静')}
 total = sum(len(v['places']) for _, v in order)
 
@@ -27,11 +29,12 @@ for m, v in order:
 <label><input type="checkbox" data-k="{key}:t"><span>一行</span></label>
 <label><input type="checkbox" data-k="{key}:d"><span>説明</span></label>
 </span></li>''')
-    sections.append(f'''<section class="ward" id="w-{esc(m)}">
-<h2><span class="wname">{esc(m)}</span><span class="wmeta"><b>{len(ps)}</b>地点 ／ 歩行 <b>{v['walk']:,}</b>m ／ <span class="prog" data-ward="{esc(m)}">0/{len(ps)*3}</span></span></h2>
+    ward, machi = m.split('／')
+    sections.append(f'''<section class="ward" id="{SLUG[m]}">
+<h2><span class="wname">{esc(machi)}<em>{esc(ward)}</em></span><span class="wmeta"><b>{len(ps)}</b>地点 ／ 歩行 <b>{v['walk']:,}</b>m ／ <span class="prog">0/{len(ps)*3}</span></span></h2>
 <ol class="rows">{''.join(rows)}</ol></section>''')
 
-nav = ''.join(f'<a href="#w-{esc(m)}">{esc(m)}<i>{len(v["places"])}</i></a>' for m, v in order)
+nav = ''.join(f'<a href="#{SLUG[m]}" data-ward="{esc(v["ward"])}">{esc(m.split("／")[1])}<i>{len(v["places"])}</i></a>' for m, v in order)
 
 open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'),'w').write(f'''<!doctype html>
 <html lang="ja">
@@ -99,6 +102,8 @@ nav a i{{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-style:nor
 nav a:hover,nav a:focus-visible{{border-color:var(--accent); color:var(--accent); outline:none}}
 
 .ward{{margin-top:34px}}
+.wname em{{font-style:normal; font-size:11px; letter-spacing:.1em; color:var(--faint); margin-left:9px; vertical-align:.15em}}
+nav a[data-ward="荒川区"]{{border-style:dashed}}
 .ward h2{{display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap;
   margin:0 0 8px; padding-bottom:7px; border-bottom:1px solid var(--rule); font-size:21px; letter-spacing:.05em}}
 .wmeta{{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums;
@@ -147,7 +152,7 @@ footer p{{margin:.35rem 0}}
 <div class="wrap">
 <header>
 <h1>そぞろ野帳</h1>
-<p class="sub">Tokyo sozoro ／ 撮影と取材の割り当て　—　台東区 {len(order)}町字・{total}地点</p>
+<p class="sub">Tokyo sozoro ／ 撮影と取材の割り当て　—　台東区・荒川区 {len(order)}町字・{total}地点</p>
 <div class="stat">
 <div><b>{total}</b><span>地点</span></div>
 <div><b>{len(order)}</b><span>町字</span></div>
@@ -159,7 +164,7 @@ footer p{{margin:.35rem 0}}
 <div class="brief">
 <div class="rule">
 <h3>浅草・上野・雷門・上野公園・西浅草・花川戸では撮らない</h3>
-<p>混雑除外で候補から消えるため、撮っても1枚も使われません。実測で確認済み（雷門起点75案・上野起点45案、一度も出ない）。<b>谷中・池之端・上野桜木も除外</b>しています。月係数の高い11月には混雑判定に入り、消えるためです。</p>
+<p>混雑除外で候補から消えるため、撮っても1枚も使われません。実測で確認済み（雷門起点75案・上野起点45案、一度も出ない）。<b>谷中・池之端・上野桜木も除外</b>しています。月係数の高い11月には混雑判定に入り、消えるためです。<br><b>荒川区は全域が対象です。</b>混雑の中心から徒歩30〜67分の帯にあたり、人を逃がす先そのものなので、優先度はむしろ高い。</p>
 </div>
 <div class="set">
 <h3>1地点につき3つ。写真だけでは画面は変わりません</h3>
@@ -173,7 +178,8 @@ footer p{{margin:.35rem 0}}
 {''.join(sections)}
 
 <footer>
-<p>対象は「体験する・街を見る・静かに歩く」のうち写真が無く、抽選に出る町字にあるもの。重複行は同一地点として統合済み（173行→{total}地点）。</p>
+<p>対象は写真が無く、抽選に出る町字にあるもの。台東区は「体験する・街を見る・静かに歩く」、荒川区は文化財・観光施設の全域。重複行は同一地点として統合済み（375行→{total}地点）。</p>
+<p><b>荒川区の194件は、区のCSVに建物の緯度経度が入っているのに丁目代表点として扱われていました。</b>照合したところ小数5桁まで一致します。座標の付け直しではなく、印の付け替えだけで使えます。</p>
 <p>順番は各町字の最北から最近傍でつないだ徒歩順路です。住所をタップすると地図が開きます。チェックはこの端末に保存されます。</p>
 <p>出典：台東区オープンデータ（CC-BY表示4.0国際）。本作品の内容について、台東区は一切保証しないものとする。</p>
 </footer>
